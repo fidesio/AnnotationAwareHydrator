@@ -5,8 +5,10 @@ namespace flip111\AnnotationAwareHydrator\Annotation;
  * @Annotation
  * @Target({"PROPERTY"})
  */
-class Hydrate {
-  public $preFilters;
-  public $postFilters;
-  public $modifier;
+class Hydrate
+{
+    public $target;
+    public $preFilters;
+    public $postFilters;
+    public $modifier;
 }

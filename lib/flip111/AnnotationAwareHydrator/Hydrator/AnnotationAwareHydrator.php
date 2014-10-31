@@ -2,46 +2,50 @@
 namespace flip111\AnnotationAwareHydrator\Hydrator;
 
 use ArrayObject;
+use flip111\AnnotationAwareHydrator\Annotation\Alias;
 use ReflectionClass;
 use Doctrine\Common\Annotations\AnnotationReader;
 use flip111\AnnotationAwareHydrator\Annotation\Extract;
 use flip111\AnnotationAwareHydrator\Annotation\Hydrate;
 use Zend\Stdlib\Hydrator\HydratorInterface;
 
-class AnnotationAwareHydrator implements HydratorInterface {
+class AnnotationAwareHydrator implements HydratorInterface
+{
     /**
      * The list with strategies that this hydrator has.
-     * 
+     *
      * @var ArrayObject
      */
     protected $strategies;
-  
+
     /**
      * Simple in-memory array cache of ReflectionProperties used.
-     * 
+     *
      * @var array
      */
     protected static $reflProperties = array();
-    
+
     /**
      * Not sure if i'm doing a good job with implementing this static !!
-     * 
-     * @var type 
+     *
+     * @var type
      */
     protected static $annotationReader;
-    
-    public function __construct() {
-      $this->strategies = new ArrayObject();
-      
-      if (! (static::$annotationReader instanceof AnnotationReader)) {
-        static::$annotationReader = new AnnotationReader();
-      }
+
+    public function __construct()
+    {
+        $this->strategies = new ArrayObject();
+
+        if (!(static::$annotationReader instanceof AnnotationReader)) {
+            static::$annotationReader = new AnnotationReader();
+        }
     }
-    
+
     /**
      * Extract values from an object
      *
      * @param  object $object
+     *
      * @return array
      */
     public function extract($object)
@@ -52,39 +56,47 @@ class AnnotationAwareHydrator implements HydratorInterface {
             $propertyName = $property->getName();
             $value = $property->getValue($object);
 
-            if ($value === null) continue;
+            if ($value === null) {
+                continue;
+            }
 
             $skip = true;
             foreach ($annotations as $a) {
-              if ($a instanceof Extract) {
-                $preFilters = $a->preFilters;
-                $postFilters = $a->postFilters;
-                $strategy = $a->modifier;
-                $skip = false;
-                break; // Only allow the first Extract annotation
-              }
+                if ($a instanceof Extract) {
+                    $preFilters = $a->preFilters;
+                    $postFilters = $a->postFilters;
+                    $strategy = $a->modifier;
+                    $skip = false;
+                    break; // Only allow the first Extract annotation
+                }
             }
-            if ($skip) continue;
-            
+            if ($skip) {
+                continue;
+            }
+
             // Applying PreFilters
             if (isset($preFilters)) {
-              foreach ($preFilters as $filter) {
-                if ($filter->filter($value) !== true) continue 2;
-              }
+                foreach ($preFilters as $filter) {
+                    if ($filter->filter($value) !== true) {
+                        continue 2;
+                    }
+                }
             }
-            
+
             // Applying Conversion by using Strategy
             if (isset($strategy)) {
-              $value = $strategy->extract($value, $object);
+                $value = $strategy->extract($value, $object);
             }
 
             // Applying PostFilters
             if (isset($postFilters)) {
-              foreach ($postFilters as $filter) {
-                if ($filter->filter($value) !== true) continue 2;
-              }
+                foreach ($postFilters as $filter) {
+                    if ($filter->filter($value) !== true) {
+                        continue 2;
+                    }
+                }
             }
-            
+
             $result[$propertyName] = $value;
         }
 
@@ -96,6 +108,7 @@ class AnnotationAwareHydrator implements HydratorInterface {
      *
      * @param  array $data
      * @param  object $object
+     *
      * @return object
      */
     public function hydrate(array $data, $object)
@@ -104,49 +117,65 @@ class AnnotationAwareHydrator implements HydratorInterface {
         foreach ($data as $key => $value) {
             if (isset($reflProperties[$key])) {
                 $annotations = static::$annotationReader->getPropertyAnnotations($reflProperties[$key]);
-              
+
                 $skip = true;
-                foreach ($annotations as $a) {
-                  if ($a instanceof Hydrate) {
-                    $preFilters = $a->preFilters;
-                    $postFilters = $a->postFilters;
-                    $strategy = $a->modifier;
-                    $skip = false;
-                    break; // Only allow the first Hydrate annotation
-                  }
+
+                foreach ($annotations as $annotation) {
+                    if ($annotation instanceof Hydrate) {
+                        $targeted_property = $annotation->target;
+                        $preFilters = $annotation->preFilters;
+                        $postFilters = $annotation->postFilters;
+                        $strategy = $annotation->modifier;
+                        $skip = false;
+                        break; // Only allow the first Hydrate annotation
+                    }
                 }
-                if ($skip) continue;
+
+                if ($skip) {
+                    continue;
+                }
 
                 // Applying PreFilters
                 if (isset($preFilters)) {
-                  foreach ($preFilters as $filter) {
-                    if ($filter->filter($value) !== true) continue 2;
-                  }
+                    foreach ($preFilters as $filter) {
+                        if ($filter->filter($value) !== true) {
+                            continue 2;
+                        }
+                    }
                 }
 
                 // Applying Conversion by using Strategy
                 if (isset($strategy)) {
-                  $value = $strategy->hydrate($value, $data);
+                    $value = $strategy->hydrate($value, $data);
                 }
 
                 // Applying PostFilters
                 if (isset($postFilters)) {
-                  foreach ($postFilters as $filter) {
-                    if ($filter->filter($value) !== true) continue 2;
-                  }
+                    foreach ($postFilters as $filter) {
+                        if ($filter->filter($value) !== true) {
+                            continue 2;
+                        }
+                    }
                 }
-                
-                $reflProperties[$key]->setValue($object, $value);
+
+                if (isset($targeted_property) && !empty($targeted_property) && isset($reflProperties[$targeted_property])) {
+                    $reflProperties[$targeted_property]->setValue($object, $value);
+                } else {
+                    $reflProperties[$key]->setValue($object, $value);
+                }
+
             }
         }
+
         return $object;
     }
-    
+
     /**
      * Get a reflection properties from in-memory cache and lazy-load if
      * class has not been loaded.
      *
      * @param  string|object $input
+     *
      * @throws Exception\InvalidArgumentException
      * @return array
      */
@@ -163,8 +192,8 @@ class AnnotationAwareHydrator implements HydratorInterface {
         }
 
         static::$reflProperties[$input] = array();
-        $reflClass                      = new ReflectionClass($input);
-        $reflProperties                 = $reflClass->getProperties();
+        $reflClass = new ReflectionClass($input);
+        $reflProperties = $reflClass->getProperties();
 
         foreach ($reflProperties as $property) {
             $property->setAccessible(true);
