@@ -1,9 +1,8 @@
 {
-    "name": "flip111/annotation-aware-hydrator",
+    "name": "fidesio/annotation-aware-hydrator",
     "type": "library",
     "description": "Hydrator/Extractor for PHP with annotation support.",
-    "keywords": ["hydrator", "extractor", "annotation", "filter", "modifier"],
-    "homepage": "https://github.com/flip111/AnnotationAwareHydrator",
+    "homepage": "https://github.com/fidesio/AnnotationAwareHydrator",
     "license": "MIT",
     "minimum-stability": "stable",
     "require": {
@@ -11,7 +10,11 @@
         "zendframework/zend-stdlib": ">=2.0.0",
         "doctrine/annotations": ">=v1.0"
     },
+    "require-dev": {
+        "sensio/generator-bundle": "~2.3"
+
+    },
     "autoload": {
-        "psr-0": { "flip111\\AnnotationAwareHydrator\\": "lib/" }
+        "psr-0": { "flip111": "lib/" }
     }
 }
