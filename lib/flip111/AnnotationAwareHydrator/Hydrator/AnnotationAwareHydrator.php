@@ -28,7 +28,7 @@ class AnnotationAwareHydrator implements HydratorInterface
     /**
      * Not sure if i'm doing a good job with implementing this static !!
      *
-     * @var type
+     * @var AnnotationReader
      */
     protected static $annotationReader;
 
@@ -113,58 +113,68 @@ class AnnotationAwareHydrator implements HydratorInterface
      */
     public function hydrate(array $data, $object)
     {
-        $reflProperties = self::getReflProperties($object);
-        foreach ($data as $key => $value) {
-            if (isset($reflProperties[$key])) {
-                $annotations = static::$annotationReader->getPropertyAnnotations($reflProperties[$key]);
+
+        $reflection_properties = self::getReflProperties($object);
+        foreach ($reflection_properties as $key => $property) {
+
+            $found_annotation = null;
+            $annotations = static::$annotationReader->getPropertyAnnotations($property);
+            if (!empty($annotations) && !empty($data)) {
 
                 $skip = true;
+                foreach ($data as $data_key => $value) {
 
-                foreach ($annotations as $annotation) {
-                    if ($annotation instanceof Hydrate) {
-                        $targeted_property = $annotation->target;
-                        $preFilters = $annotation->preFilters;
-                        $postFilters = $annotation->postFilters;
-                        $strategy = $annotation->modifier;
-                        $skip = false;
-                        break; // Only allow the first Hydrate annotation
-                    }
-                }
+                    foreach ($annotations as $annotation) {
 
-                if ($skip) {
-                    continue;
-                }
+                        if ($annotation instanceof Hydrate) {
 
-                // Applying PreFilters
-                if (isset($preFilters)) {
-                    foreach ($preFilters as $filter) {
-                        if ($filter->filter($value) !== true) {
-                            continue 2;
+                            $strategy = $annotation->modifier;
+                            $preFilters = $annotation->preFilters;
+                            $postFilters = $annotation->postFilters;
+                            $targeted_property = $annotation->target;
+
+                            $skip = false;
+                            break; // Only allow the first Hydrate annotation
+
                         }
                     }
-                }
 
-                // Applying Conversion by using Strategy
-                if (isset($strategy)) {
-                    $value = $strategy->hydrate($value, $data);
-                }
+                    if ($skip) {
+                        continue;
+                    }
 
-                // Applying PostFilters
-                if (isset($postFilters)) {
-                    foreach ($postFilters as $filter) {
-                        if ($filter->filter($value) !== true) {
-                            continue 2;
+                    // Applying PreFilters
+                    if (isset($preFilters)) {
+                        foreach ($preFilters as $filter) {
+                            if ($filter->filter($value) !== true) {
+                                continue 2;
+                            }
                         }
                     }
-                }
 
-                if (isset($targeted_property) && !empty($targeted_property) && isset($reflProperties[$targeted_property])) {
-                    $reflProperties[$targeted_property]->setValue($object, $value);
-                } else {
-                    $reflProperties[$key]->setValue($object, $value);
+                    // Applying Conversion by using Strategy
+                    if (isset($strategy)) {
+                        $value = $strategy->hydrate($value, $data);
+                    }
+
+                    // Applying PostFilters
+                    if (isset($postFilters)) {
+                        foreach ($postFilters as $filter) {
+                            if ($filter->filter($value) !== true) {
+                                continue 2;
+                            }
+                        }
+                    }
+
+                    if (!empty($targeted_property) && $targeted_property == $data_key) {
+                        $reflection_properties[$key]->setValue($object, $value);
+                        break;
+                    }
+
                 }
 
             }
+
         }
 
         return $object;
